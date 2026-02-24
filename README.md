@@ -1,2 +1,216 @@
-# phishing-detector
-ML-based phishing site detection system
+# 🛡️ Phishing Detector
+
+> **Türkçe → [hemen aşağıda](#-türkçe--tek-tuşla-çalıştır)**  
+> **English → [scroll down](#-english--one-command-start)**
+
+---
+
+## 🇹🇷 Türkçe — Tek Tuşla Çalıştır
+
+### Tek Gereksinim: Docker
+
+Docker'ı kur, başlat, işte bu kadar. Başka hiçbir şeye gerek yok.
+Python da, Node.js da, veritabanı da — hepsi Docker tarafından **otomatik** indirilir.
+
+| İşletim Sistemi | Docker İndirme Linki |
+|---|---|
+| Windows | https://docs.docker.com/desktop/install/windows-install/ |
+| Mac | https://docs.docker.com/desktop/install/mac-install/ |
+| Linux | `curl -fsSL https://get.docker.com \| sh` |
+
+> Docker Desktop'ı kurduktan sonra uygulamayı başlat (sağ alttaki Docker simgesi yeşil olmalı).
+
+---
+
+### Çalıştırma Adımları
+
+**Adım 1 — Projeyi indir:**
+```bash
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+```
+
+**Adım 2 — Tek komutla başlat:**
+```bash
+bash start.sh
+```
+
+Bu kadar. Script her şeyi kendi kendine yapar:
+- Gerekli tüm kütüphaneleri indirir (ilk seferinde ~2-5 dakika, sonraki çalıştırmalarda çok hızlı)
+- Veritabanını ve cache'i başlatır
+- ML modelini eğitir
+- Backend ve frontend'i başlatır
+- Uygulama hazır olana kadar bekler
+- **Tarayıcıyı otomatik açar**
+
+---
+
+### Ne Göreceksin?
+
+Script başarıyla tamamlandığında terminalde şunu göreceksin:
+
+```
+✅  Phishing Detector başarıyla çalışıyor!
+══════════════════════════════════════════
+🌐  Dashboard (Ana Sayfa) :  http://localhost
+📡  API Dokümantasyonu    :  http://localhost:8000/docs
+📊  Grafana İzleme        :  http://localhost:3001
+🔭  Prometheus            :  http://localhost:9090
+```
+
+Ve tarayıcın **http://localhost** adresinde otomatik açılacak:
+
+- URL kutusuna bir adres yaz (örn. `http://paypal-secure-login.xyz`) ve **"Tara"** butonuna bas
+- Sonuç: Phishing mi? Güvenli mi? Risk skoru nedir?
+
+---
+
+### Sık Kullanılan Komutlar
+
+```bash
+# Servisleri durdur
+docker compose down
+
+# Logları izle (Ctrl+C ile çık)
+docker compose logs -f
+
+# Tekrar başlat
+bash start.sh
+
+# Yardım
+make help
+```
+
+---
+
+### Sorun Giderme
+
+**"Docker bulunamadı" hatası:**
+→ Docker Desktop'ı yükle ve başlat, sonra tekrar `bash start.sh` çalıştır.
+
+**"Docker çalışmıyor" hatası:**
+→ Docker Desktop uygulamasını aç (sağ alttaki sistem saatinde Docker simgesi görünmeli).
+
+**Port zaten kullanımda (port already in use):**
+```bash
+docker compose down
+bash start.sh
+```
+
+**Servisler yavaş başlıyor:**
+→ İlk çalıştırmada Docker image'ları indirildiği için 5-10 dakika sürebilir. Bir sonraki seferinde çok daha hızlı olacak.
+
+**Logları görmek istiyorum:**
+```bash
+docker compose logs -f          # tüm servisler
+docker compose logs -f backend  # sadece backend
+```
+
+---
+
+## 🇬🇧 English — One-Command Start
+
+### Only requirement: Docker
+
+[Get Docker Desktop](https://docs.docker.com/get-docker/) — no Python, Node.js, or database setup needed. Everything is downloaded automatically.
+
+### Run
+
+```bash
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+bash start.sh
+```
+
+That's it. The script:
+- Downloads all dependencies automatically (Docker images, ~2-5 min first time)
+- Starts the database, cache, backend, and frontend
+- Waits until the app is actually ready
+- Opens the browser automatically at **http://localhost**
+
+### What you'll see
+
+The dashboard at `http://localhost` lets you type any URL and scan it for phishing. The API docs at `http://localhost:8000/docs` let you test the API interactively.
+
+### Commands
+
+```bash
+docker compose down          # stop all services
+docker compose logs -f       # watch live logs
+bash start.sh                # start / restart everything
+make help                    # list all make targets
+```
+
+---
+
+## ✨ Features
+
+- **Ensemble ML Model** — XGBoost + LightGBM + Random Forest with soft voting
+- **47 URL Features** — URL structure, SSL, WHOIS, HTML analysis, blacklist
+- **Real-time API** — FastAPI with async I/O, Redis caching, rate limiting
+- **Modern Dashboard** — React + TypeScript + TailwindCSS
+- **Bulk Scanning** — Upload CSV or paste URLs, export results
+- **Monitoring** — Prometheus metrics + Grafana dashboards
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐    ┌──────────────────────────────────────────┐
+│   Browser   │───▶│              Nginx (port 80)              │
+└─────────────┘    └──────┬───────────────────┬───────────────┘
+                          │                   │
+                   ┌──────▼──────┐    ┌───────▼──────┐
+                   │  Frontend   │    │   Backend     │
+                   │ React/Vite  │    │  FastAPI      │
+                   │ (port 3000) │    │  (port 8000)  │
+                   └─────────────┘    └──────┬────────┘
+                                             │
+                          ┌──────────────────┼──────────────┐
+                          │                  │              │
+                   ┌──────▼──────┐  ┌────────▼────┐  ┌─────▼──────┐
+                   │ PostgreSQL  │  │    Redis     │  │ ML Models  │
+                   │ (port 5432) │  │ (port 6379)  │  │  (joblib)  │
+                   └─────────────┘  └─────────────┘  └────────────┘
+```
+
+## 📡 API Reference
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/scan/url` | Scan a single URL |
+| `POST` | `/api/v1/scan/bulk` | Bulk scan (up to 100 URLs) |
+| `GET` | `/api/v1/scan/history` | Paginated scan history |
+| `GET` | `/api/v1/reports/stats` | Aggregate statistics |
+| `GET` | `/api/v1/health` | Health check |
+
+```bash
+curl -X POST http://localhost:8000/api/v1/scan/url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "http://paypa1-secure.xyz/login"}'
+```
+
+```json
+{
+  "is_phishing": true,
+  "confidence": 0.94,
+  "risk_score": 94,
+  "risk_level": "CRITICAL"
+}
+```
+
+## 🧪 Tests
+
+```bash
+make test
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Run `make test`
+4. Submit a pull request
+
+## 📄 License
+
+MIT License
