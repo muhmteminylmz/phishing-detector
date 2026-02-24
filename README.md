@@ -1,6 +1,169 @@
 # 🛡️ Phishing Detector
 
-Production-ready, ML-based phishing site detection system with real-time URL analysis, ensemble machine learning models, and a modern React dashboard.
+> **Türkçe talimatlar için → [aşağıya kaydır](#-türkçe--nasıl-çalıştırılır)**
+> **English instructions → [scroll down](#-english--how-to-run)**
+
+---
+
+## 🇹🇷 Türkçe — Nasıl Çalıştırılır?
+
+### Ön Gereksinim
+
+Sadece **Docker** gereklidir.
+[Docker Desktop'ı buradan indir](https://docs.docker.com/get-docker/)
+
+> Windows kullanıcısıysan Docker Desktop'ı indirip kurduktan sonra başlatman yeterli.
+
+---
+
+### Adım 1 — Projeyi indir
+
+```bash
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+```
+
+---
+
+### Adım 2 — Başlat
+
+```bash
+bash scripts/setup.sh
+```
+
+**Hepsi bu kadar.** Script gerekli tüm servisleri (veritabanı, cache, backend, frontend) otomatik olarak başlatır.
+ML modeli de ilk açılışta **otomatik eğitilir** — ayrıca bir şey yapmana gerek yok.
+
+`make` komutu varsa alternatif olarak:
+
+```bash
+make start
+```
+
+---
+
+### Adım 3 — Tarayıcıda aç
+
+Servisler başladıktan sonra şu adreslere gidebilirsin:
+
+| Adres | Ne işe yarar |
+|---|---|
+| **http://localhost** | 🌐 Ana dashboard (URL tara, sonuçları gör) |
+| http://localhost:8000/docs | 📡 API dökümantasyonu (Swagger UI) |
+| http://localhost:3001 | 📊 Grafana izleme (kullanıcı: `admin`, şifre: `admin`) |
+| http://localhost:9090 | 🔭 Prometheus metrikleri |
+
+---
+
+### Sık Kullanılan Komutlar
+
+```bash
+make help      # Tüm komutları listele
+make start     # Servisleri başlat
+make stop      # Servisleri durdur
+make restart   # Yeniden başlat
+make logs      # Canlı logları izle (Ctrl+C ile çık)
+make status    # Hangi servisler çalışıyor?
+make test      # Backend testlerini çalıştır
+make train     # ML modelini yeniden eğit
+make clean     # Tüm verileri sil (dikkat!)
+```
+
+`make` komutu yoksa Docker Compose komutlarını doğrudan kullanabilirsin:
+
+```bash
+docker compose up -d      # başlat
+docker compose down       # durdur
+docker compose logs -f    # logları izle
+```
+
+---
+
+### Sorun Giderme
+
+**"Docker bulunamadı" hatası alıyorum:**
+Docker Desktop'ın yüklü ve çalışır durumda olduğundan emin ol.
+
+**Servisler başlamadı / hata var:**
+```bash
+make logs     # hata mesajlarına bak
+make stop
+make start    # yeniden dene
+```
+
+**Port zaten kullanımda hatası (port already in use):**
+80, 8000, 5432 veya 6379 portlarını kullanan başka bir uygulama olabilir.
+`docker compose down` ile önce durdur, sonra tekrar başlat.
+
+---
+
+### Yerel Geliştirme (hot-reload ile)
+
+Kodu düzenleyip anlık değişiklik görmek istiyorsan:
+
+```bash
+make dev
+```
+
+Bu komut PostgreSQL ve Redis'i Docker'da başlatır. Ardından **iki ayrı terminal** aç:
+
+```bash
+# Terminal 1 — Backend (http://localhost:8000)
+cd backend
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 — Frontend (http://localhost:3000)
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 🇬🇧 English — How to Run
+
+### Prerequisites
+
+Only **Docker** is required. [Get Docker Desktop](https://docs.docker.com/get-docker/).
+
+### Quick Start
+
+```bash
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+bash scripts/setup.sh   # or: make start
+```
+
+Open **http://localhost** for the dashboard.
+The ML model is **trained automatically on first startup** — no manual step needed.
+
+### All Make Commands
+
+```bash
+make help      # List all commands
+make start     # Start all services (Docker)
+make stop      # Stop all services
+make restart   # Restart services
+make logs      # Follow live logs
+make status    # Show service status
+make dev       # Local dev with hot-reload (DB+Redis in Docker)
+make dev-stop  # Stop local dev services
+make test      # Run backend tests
+make train     # Re-train ML model inside Docker
+make clean     # Delete all volumes/data (destructive!)
+```
+
+### Service URLs
+
+| URL | Description |
+|---|---|
+| http://localhost | Dashboard |
+| http://localhost:8000/docs | API documentation (Swagger) |
+| http://localhost:3001 | Grafana (admin / admin) |
+| http://localhost:9090 | Prometheus |
+
+---
 
 ## ✨ Features
 
@@ -10,7 +173,7 @@ Production-ready, ML-based phishing site detection system with real-time URL ana
 - **Modern Dashboard** — React + TypeScript + TailwindCSS
 - **Bulk Scanning** — Upload CSV or paste URLs, export results
 - **Monitoring** — Prometheus metrics + Grafana dashboards
-- **Docker** — One-command deployment
+- **One-command startup** — `bash scripts/setup.sh`
 
 ## 🏗️ Architecture
 
@@ -33,44 +196,7 @@ Production-ready, ML-based phishing site detection system with real-time URL ana
                    └─────────────┘  └─────────────┘  └────────────┘
 ```
 
-## 🚀 Quick Start (Docker)
-
-```bash
-# Clone
-git clone https://github.com/muhmteminylmz/phishing-detector
-cd phishing-detector
-
-# Copy env and start
-cp .env.example .env
-docker compose up -d
-
-# Train ML model (first time)
-docker compose exec backend python ml/train.py
-```
-
-Open http://localhost for the dashboard, http://localhost:8000/docs for API.
-
-## 🔧 Manual Setup
-
-```bash
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python ml/train.py            # Train the model
-uvicorn app.main:app --reload  # Start backend
-
-# In another terminal
-cd frontend
-npm install
-npm run dev                    # Start frontend (port 3000)
-```
-
-Or use the setup script:
-```bash
-bash scripts/setup.sh
-```
-
-## 📡 API Endpoints
+## 📡 API Reference
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -83,15 +209,13 @@ bash scripts/setup.sh
 | `GET` | `/api/v1/health` | Health check |
 | `GET` | `/metrics` | Prometheus metrics |
 
-### Example Request
+### Example
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/scan/url \
   -H "Content-Type: application/json" \
   -d '{"url": "http://paypa1-secure.xyz/login"}'
 ```
-
-### Example Response
 
 ```json
 {
@@ -101,8 +225,8 @@ curl -X POST http://localhost:8000/api/v1/scan/url \
   "confidence": 0.94,
   "risk_score": 94,
   "risk_level": "CRITICAL",
-  "features": { "url_length": 32, "suspicious_words": 1, ... },
-  "feature_importance": { "suspicious_words": 0.21, ... },
+  "features": { "url_length": 32, "suspicious_words": 1 },
+  "feature_importance": { "suspicious_words": 0.21 },
   "model_version": "1.0.0",
   "scan_time_ms": 234
 }
@@ -112,40 +236,28 @@ curl -X POST http://localhost:8000/api/v1/scan/url \
 
 **Algorithm:** Ensemble (XGBoost + LightGBM + Random Forest, soft voting)
 
-**Features (47 total):**
-- URL structure: length, dots, hyphens, depth, entropy, character ratios
-- Domain: age, registration length, subdomain count, IP detection
-- SSL: validity, issuer trust, days remaining
-- HTML: form count, iframe count, external links, obfuscation
-- Blacklist membership
+The model is **automatically trained on first startup** if no saved model file exists.
+To force a re-train: `make train`
 
-**Training:**
-```bash
-cd backend
-python ml/train.py     # Trains and saves to ml/models/ensemble_model.joblib
-python ml/evaluate.py  # Evaluate on held-out test set
-```
+**Features (47 total):** URL structure, entropy, character ratios, subdomain count,
+IP detection, SSL validity/issuer/expiry, WHOIS domain age, HTML forms/iframes/obfuscation,
+blacklist membership.
 
 ## 🧪 Tests
 
 ```bash
-cd backend
-pip install -r requirements.txt
-pytest tests/ -v
+make test
+# or manually:
+cd backend && pytest tests/ -v
 ```
-
-## 📊 Monitoring
-
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3001 (admin/admin)
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Run tests: `pytest tests/ -v`
+3. Run tests: `make test`
 4. Submit a pull request
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE)
+MIT License
