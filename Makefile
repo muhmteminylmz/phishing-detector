@@ -4,7 +4,7 @@
 # =============================================================================
 
 .DEFAULT_GOAL := help
-.PHONY: help start stop restart logs status dev dev-stop test train clean build
+.PHONY: help start stop restart logs status dev dev-stop test train clean build open
 
 # ── Renkler / Colors ──────────────────────────────────────────────────────────
 BLUE  := \033[34m
@@ -20,7 +20,8 @@ help: ## Bu yardım mesajını göster / Show this help
 	@echo "  $(BLUE)🛡️  Phishing Detector$(RESET)"
 	@echo ""
 	@echo "  $(GREEN)Docker ile çalıştır (önerilen):$(RESET)"
-	@echo "    make start       → Tüm servisleri başlat (Docker)"
+	@echo "    make start       → Kütüphaneleri indir, başlat, tarayıcı aç (tek tuş)"
+	@echo "    make open        → Tarayıcıda dashboard'u aç"
 	@echo "    make stop        → Tüm servisleri durdur"
 	@echo "    make restart     → Servisleri yeniden başlat"
 	@echo "    make logs        → Canlı logları izle"
@@ -43,18 +44,15 @@ help: ## Bu yardım mesajını göster / Show this help
 ## DOCKER (ÜRETİM BENZERİ) / DOCKER (PRODUCTION-LIKE)
 ## ─────────────────────────────────────────────────────────────────────────────
 
-start: _ensure_env ## Tüm servisleri Docker ile başlat (önerilen)
-	@echo "$(GREEN)▶  Servisler başlatılıyor...$(RESET)"
-	docker compose up -d
-	@echo ""
-	@echo "$(GREEN)✅ Servisler çalışıyor!$(RESET)"
-	@echo ""
-	@echo "  🌐 Dashboard  : http://localhost"
-	@echo "  📡 API Docs   : http://localhost:8000/docs"
-	@echo "  📊 Grafana    : http://localhost:3001  (admin / admin)"
-	@echo "  🔭 Prometheus : http://localhost:9090"
-	@echo ""
-	@echo "  💡 Loglar için: make logs"
+start: ## Tüm servisleri başlat – kütüphaneleri indirir, hazır olunca tarayıcı açar
+	@bash scripts/setup.sh
+
+open: ## Tarayıcıda dashboard'u aç
+	@case "$$(uname -s)" in \
+		Darwin)  open http://localhost ;; \
+		Linux)   xdg-open http://localhost 2>/dev/null || sensible-browser http://localhost 2>/dev/null || echo "http://localhost adresini tarayıcında aç" ;; \
+		*)       echo "http://localhost adresini tarayıcında aç" ;; \
+	esac
 
 stop: ## Tüm Docker servislerini durdur
 	docker compose down
