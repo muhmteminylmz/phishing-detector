@@ -5,7 +5,7 @@ Production-ready, ML-based phishing site detection system with real-time URL ana
 ## ✨ Features
 
 - **Ensemble ML Model** — XGBoost + LightGBM + Random Forest with soft voting
-- **40+ URL Features** — URL structure, SSL, WHOIS, HTML analysis, blacklist
+- **47 URL Features** — URL structure, SSL, WHOIS, HTML analysis, blacklist
 - **Real-time API** — FastAPI with async I/O, Redis caching, rate limiting
 - **Modern Dashboard** — React + TypeScript + TailwindCSS
 - **Bulk Scanning** — Upload CSV or paste URLs, export results

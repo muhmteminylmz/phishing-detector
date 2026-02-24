@@ -1,3 +1,4 @@
+import ipaddress
 import re
 from typing import Dict, Any, Optional
 from urllib.parse import urlparse
@@ -16,6 +17,30 @@ OBFUSCATION_PATTERNS = [
     re.compile(r"\\x[0-9a-fA-F]{2}", re.IGNORECASE),
 ]
 
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True if the URL does not target a private/loopback address."""
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    if not hostname:
+        return False
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return not any(addr in net for net in _PRIVATE_NETWORKS)
+    except ValueError:
+        # Not an IP address — hostname is fine
+        return True
+
 
 async def analyze_html(url: str, timeout: int = 10) -> Dict[str, Any]:
     """Download and analyze HTML content of a URL."""
@@ -29,6 +54,10 @@ async def analyze_html(url: str, timeout: int = 10) -> Dict[str, Any]:
         "meta_refresh": 0,
         "right_click_disabled": 0,
     }
+    # Reject requests to private/loopback addresses to prevent SSRF
+    if not _is_safe_url(url):
+        logger.debug({"msg": "HTML fetch skipped – private address", "url": url})
+        return features
     try:
         async with httpx.AsyncClient(
             follow_redirects=True,

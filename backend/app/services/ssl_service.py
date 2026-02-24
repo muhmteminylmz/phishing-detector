@@ -24,6 +24,7 @@ def check_ssl(hostname: str, port: int = 443, timeout: int = 5) -> Dict[str, Any
         return result
     try:
         ctx = ssl.create_default_context()
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         with socket.create_connection((hostname, port), timeout=timeout) as sock:
             with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert()
