@@ -48,7 +48,8 @@ def main():
     feature_names = extractor._feature_names()
 
     # Train a demo model (same as what the app uses at startup)
-    import tempfile, os
+    import tempfile
+    import os
     with tempfile.TemporaryDirectory() as tmpdir:
         model_path = os.path.join(tmpdir, "export_model.joblib")
         model = EnsemblePhishingModel(model_path)

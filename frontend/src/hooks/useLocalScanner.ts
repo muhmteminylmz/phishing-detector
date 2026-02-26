@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { scanUrlLocally, type LocalScanResult } from '../services/phishingEngine'
 import toast from 'react-hot-toast'
 
+const MAX_HISTORY = 200
+
 interface UseLocalScannerReturn {
   result: LocalScanResult | null
   loading: boolean
@@ -28,7 +30,7 @@ export function useLocalScanner(): UseLocalScannerReturn {
         const history: LocalScanResult[] = JSON.parse(localStorage.getItem('scan_history') ?? '[]')
         history.unshift(data)
         // Keep last 200 scans
-        localStorage.setItem('scan_history', JSON.stringify(history.slice(0, 200)))
+        localStorage.setItem('scan_history', JSON.stringify(history.slice(0, MAX_HISTORY)))
       } catch { /* storage full – ignore */ }
 
       if (data.is_phishing) {

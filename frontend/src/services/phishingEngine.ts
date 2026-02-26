@@ -223,9 +223,11 @@ interface ModelData {
 
 // ── Random Forest inference ────────────────────────────────────────────────
 
+const LEAF_SENTINEL = -1
+
 function predictTree(tree: TreeData, features: number[]): number[] {
   let node = 0
-  while (tree.children_left[node] !== -1) {   // -1 = leaf sentinel
+  while (tree.children_left[node] !== LEAF_SENTINEL) {
     const feat = tree.feature[node]
     if (features[feat] <= tree.threshold[node]) {
       node = tree.children_left[node]
