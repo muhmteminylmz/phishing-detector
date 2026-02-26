@@ -64,8 +64,9 @@ if (-not (Test-Path ".env")) {
 Write-Host "[3/4] Servisler başlatılıyor..." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  Gerekli tüm kütüphaneler ve bağımlılıklar Docker tarafından"
-Write-Host "  otomatik indirilecek. Bu işlem ilk seferinde 2-5 dakika sürebilir."
-Write-Host "  Bir sonraki çalıştırmada çok daha hızlı olacak."
+Write-Host "  otomatik indirilecek. İlk seferinde image build edilir ve ML modeli"
+Write-Host "  eğitilir (3-7 dk). Sonraki çalıştırmalarda her şey hazır gelir,"
+Write-Host "  yeniden eğitim gerekmez."
 Write-Host ""
 
 docker compose up -d

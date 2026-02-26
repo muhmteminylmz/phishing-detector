@@ -95,11 +95,13 @@ Script çalıştıktan sonra terminalde şu adımları göreceksin:
 [3/4] Servisler başlatılıyor...
 
   Gerekli tüm kütüphaneler ve bağımlılıklar Docker tarafından
-  otomatik indirilecek. Bu işlem ilk seferinde 2-5 dakika sürebilir.
+  otomatik indirilecek. İlk seferinde image build edilir ve ML modeli
+  eğitilir (3-7 dk). Sonraki çalıştırmalarda her şey hazır gelir,
+  yeniden eğitim gerekmez.
 
   ✅ Container'lar başlatıldı
 ```
-→ **İlk seferinde 2-5 dakika sürer** (Docker image'ları indirilir). Sonraki çalıştırmalarda saniyeler sürer.
+→ **İlk seferinde 3-7 dakika sürer** (Docker image'ları indirilir ve model eğitilir). Sonraki çalıştırmalarda model zaten hazır olduğu için saniyeler sürer.
 
 ### 4.4 — Backend Hazırlık Kontrolü
 ```
@@ -179,7 +181,7 @@ docker compose ps
 | "Docker bulunamadı" | Docker Desktop'ı kur ve başlat (Adım 1'e bak) |
 | "Docker çalışmıyor" | Docker Desktop uygulamasını aç, yeşil simgeyi bekle |
 | Port zaten kullanımda | `docker compose down` yap, sonra tekrar başlat |
-| İlk çalıştırma çok yavaş | Normal — Docker image'ları ilk seferinde indirilir (2-5 dk) |
+| İlk çalıştırma çok yavaş | Normal — Docker image'ları ilk seferinde indirilir ve model eğitilir (3-7 dk). Sonraki çalıştırmalarda yeniden eğitim yapılmaz |
 | Backend yanıt vermiyor | `docker compose logs -f backend` ile logları kontrol et |
 | Sayfada "502 Bad Gateway" | Backend henüz hazır değil, 1-2 dakika bekle ve sayfayı yenile |
 

@@ -89,8 +89,9 @@ fi
 echo -e "${YELLOW}[3/4]${NC} Servisler başlatılıyor..."
 echo ""
 echo "  Gerekli tüm kütüphaneler ve bağımlılıklar Docker tarafından"
-echo "  otomatik indirilecek. Bu işlem ilk seferinde 2-5 dakika sürebilir."
-echo "  Bir sonraki çalıştırmada çok daha hızlı olacak."
+echo "  otomatik indirilecek. İlk seferinde image build edilir ve ML modeli"
+echo "  eğitilir (3-7 dk). Sonraki çalıştırmalarda her şey hazır gelir,"
+echo "  yeniden eğitim gerekmez."
 echo ""
 
 docker compose up -d
