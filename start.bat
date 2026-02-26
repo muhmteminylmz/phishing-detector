@@ -1,24 +1,25 @@
 @echo off
+chcp 65001 >nul 2>&1
 REM =============================================================================
-REM  Phishing Detector - Windows ile Baslatma
-REM  Kullanim: start.bat  (cift tikla veya CMD'de calistir)
+REM  Phishing Detector - Windows ile Başlatma
+REM  Kullanım: start.bat  (çift tıkla veya CMD'de çalıştır)
 REM
-REM  WSL veya bash gerektirmez. Dogrudan Windows'ta calisir.
+REM  WSL veya bash gerektirmez. Doğrudan Windows'ta çalışır.
 REM =============================================================================
 
 echo.
 echo   ========================================================
-echo     Phishing Detector - Baslatiliyor...
+echo     Phishing Detector - Başlatılıyor...
 echo   ========================================================
 echo.
 
-REM PowerShell ile start.ps1 calistir
+REM PowerShell ile start.ps1 çalıştır
 powershell -ExecutionPolicy Bypass -File "%~dp0start.ps1"
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo   [HATA] Baslatma sirasinda sorun olustu.
-    echo   Lutfen Docker Desktop'in calistiginden emin ol.
+    echo   [HATA] Başlatma sırasında sorun oluştu.
+    echo   Lütfen Docker Desktop'ın çalıştığından emin ol.
     echo.
 )
 
