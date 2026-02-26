@@ -15,6 +15,7 @@ env/
 # ML models (large binary files)
 backend/ml/models/*.joblib
 backend/ml/results/*.json
+backend/ml/checkpoints/
 
 # Environment
 .env

@@ -26,3 +26,4 @@ coverage==7.4.1
 aioredis==2.0.1
 slowapi==0.1.9
 lxml==5.1.0
+tqdm==4.67.1

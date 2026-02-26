@@ -1,5 +1,6 @@
 # 🛡️ Phishing Detector
 
+> **🇹🇷 Adım adım detaylı Türkçe rehber → [KURULUM.md](KURULUM.md)**  
 > **Türkçe → [hemen aşağıda](#-türkçe--tek-tuşla-çalıştır)**  
 > **English → [scroll down](#-english--one-command-start)**
 
@@ -31,9 +32,23 @@ cd phishing-detector
 ```
 
 **Adım 2 — Tek komutla başlat:**
+
+Windows (CMD — en kolay yol, çift tıkla veya CMD'ye yaz):
+```
+start.bat
+```
+
+Windows (PowerShell):
+```powershell
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+Mac / Linux:
 ```bash
 bash start.sh
 ```
+
+> **💡 Detaylı adım adım rehber için:** [KURULUM.md](KURULUM.md)
 
 Bu kadar. Script her şeyi kendi kendine yapar:
 - Gerekli tüm kütüphaneleri indirir (ilk seferinde ~2-5 dakika, sonraki çalıştırmalarda çok hızlı)
@@ -65,6 +80,122 @@ Ve tarayıcın **http://localhost** adresinde otomatik açılacak:
 
 ---
 
+### Model Eğitimi (Training) – İlerleme Takibi
+
+Model eğitimi sırasında terminalde her adımın ilerlemesini, tamamlanma yüzdesini ve geçen süreyi göreceksin:
+
+```
+============================================================
+  🛡️  Phishing Detector — Model Training
+============================================================
+  Steps: 6
+    1. Dataset generation
+    2. Build ensemble model
+    3. Cross-validation (5-fold)
+    4. Train final model
+    5. Evaluation
+    6. Save model & metrics
+============================================================
+
+[Step 1/6] Generating dataset...
+  Phishing samples: 100%|████████████| 1000/1000
+  Legit samples   : 100%|████████████| 1000/1000
+  ✅ Dataset ready — 2000 samples (0.3s)
+
+[Step 3/6] Cross-validating (5-fold)...
+  CV folds: 100%|████████████| 5/5
+  ✅ CV AUC: 0.9998 ± 0.0002 (12.4s)
+
+...
+
+============================================================
+  🎉 Training complete!  Total time: 0m 18s
+============================================================
+```
+
+Her adımdan sonra tahmini kalan süre (`⏱️ Estimated remaining: ~12s`) gösterilir, böylece eğitimin ne zaman biteceğini takip edebilirsin.
+
+**Arka planda çalışan Vmmem nedir?**
+Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker Desktop'ın kullandığı WSL2 sanal makinesidir ve yalnızca Windows'a özgüdür (Mac/Linux'ta görünmez). Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
+
+> **💡 Vmmem bellek kullanımını sınırlamak için:** `%USERPROFILE%\.wslconfig` dosyası oluşturup şunu ekle:
+> ```ini
+> [wsl2]
+> memory=4GB
+> processors=2
+> ```
+> Sonra PowerShell'de `wsl --shutdown` çalıştır ve Docker Desktop'ı yeniden başlat.
+
+---
+
+### PC Kapanırsa Ne Olur? (Checkpoint / Resume)
+
+Eğitim sırasında PC kapanırsa veya Docker durdurulursa **sorun yok** — eğitim kaldığı yerden devam eder:
+
+```bash
+# PC yeniden açıldıktan sonra sadece tekrar çalıştır:
+bash start.sh
+```
+
+Script otomatik olarak:
+- ✅ Tamamlanan adımları atlar (dataset, cross-validation vb.)
+- ✅ Kalan adımlardan devam eder
+- ✅ Tamamlandığında checkpoint dosyalarını temizler
+
+Terminalde şöyle bir çıktı göreceksin:
+
+```
+============================================================
+  🛡️  Phishing Detector — Model Training
+============================================================
+  Steps: 6
+    ✅ Dataset generation
+    ✅ Build ensemble model
+    ✅ Cross-validation (5-fold)
+     4. Train final model
+     5. Evaluation
+     6. Save model & metrics
+
+  ▶ Resuming from step 4 (steps 1-3 already done)
+============================================================
+```
+
+> **Not:** Eğitimi sıfırdan başlatmak istersen checkpoint klasörünü sil:
+> ```bash
+> rm -rf backend/ml/checkpoints/
+> ```
+
+---
+
+### Uzak Bilgisayarda (Remote) Eğitim
+
+Projeyi uzak bir sunucuda (VPS, bulut VM, üniversite sunucusu vb.) eğitmek için:
+
+```bash
+# 1. Uzak sunucuya bağlan
+ssh kullanici@sunucu-adresi
+
+# 2. Projeyi indir
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+
+# 3. Docker kur (Linux sunucularda)
+curl -fsSL https://get.docker.com | sh
+
+# 4. Başlat
+bash start.sh
+```
+
+> **İpucu:** SSH bağlantısı kesilse bile eğitimin devam etmesi için `screen` veya `tmux` kullan:
+> ```bash
+> tmux new -s training
+> bash start.sh
+> # Ctrl+B, D ile çık — eğitim arka planda devam eder
+> # Tekrar bağlanmak için: tmux attach -t training
+> ```
+
+---
+
 ### Sık Kullanılan Komutlar
 
 ```bash
@@ -85,8 +216,20 @@ make help
 
 ### Sorun Giderme
 
+**WSL hatası: `execvpe(/bin/bash) failed: No such file or directory`:**
+→ Bu hata Windows'ta WSL (Linux Alt Sistemi) kurulu olmadığında oluşur.
+**Çözüm:** PowerShell ile başlat (WSL gerektirmez):
+```powershell
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+Veya WSL'i kurmak istersen PowerShell'i **yönetici olarak** açıp şunu çalıştır:
+```powershell
+wsl --install
+```
+Sonra bilgisayarı yeniden başlat ve `bash start.sh` komutunu tekrar dene.
+
 **"Docker bulunamadı" hatası:**
-→ Docker Desktop'ı yükle ve başlat, sonra tekrar `bash start.sh` çalıştır.
+→ Docker Desktop'ı yükle ve başlat, sonra tekrar başlat.
 
 **"Docker çalışmıyor" hatası:**
 → Docker Desktop uygulamasını aç (sağ alttaki sistem saatinde Docker simgesi görünmeli).
@@ -116,6 +259,21 @@ docker compose logs -f backend  # sadece backend
 
 ### Run
 
+Windows (CMD — easiest, double-click or type in CMD):
+```
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+start.bat
+```
+
+Windows (PowerShell — no WSL required):
+```powershell
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+Mac / Linux:
 ```bash
 git clone https://github.com/muhmteminylmz/phishing-detector
 cd phishing-detector
