@@ -291,18 +291,21 @@ def train() -> None:
             # Checkpoint after each fold
             _save_checkpoint(2, {"fold_scores": fold_scores})
         cv_scores = np.array(fold_scores)
+        cv_auc_mean = float(cv_scores.mean())
+        cv_auc_std = float(cv_scores.std())
         elapsed = time.time() - step_start
         step_times.append(elapsed)
-        print(f"  ✅ CV AUC: {cv_scores.mean():.4f} ± {cv_scores.std():.4f} ({elapsed:.1f}s)")
+        print(f"  ✅ CV AUC: {cv_auc_mean:.4f} ± {cv_auc_std:.4f} ({elapsed:.1f}s)")
         print(_eta())
         print()
-        _save_checkpoint(3, {"cv_auc_mean": float(cv_scores.mean()),
-                             "cv_auc_std": float(cv_scores.std())})
+        _save_checkpoint(3, {"cv_auc_mean": cv_auc_mean,
+                             "cv_auc_std": cv_auc_std})
     else:
         cv_data = checkpoint.get("data", {})
-        cv_scores = np.array([cv_data.get("cv_auc_mean", 0.0)])
+        cv_auc_mean = cv_data.get("cv_auc_mean", 0.0)
+        cv_auc_std = cv_data.get("cv_auc_std", 0.0)
         print(f"[Step 3/{total_steps}] Cross-validation — loaded from checkpoint ✅")
-        print(f"  CV AUC: {cv_data.get('cv_auc_mean', 0):.4f} ± {cv_data.get('cv_auc_std', 0):.4f}")
+        print(f"  CV AUC: {cv_auc_mean:.4f} ± {cv_auc_std:.4f}")
         print()
 
     # ── Step 4: Train final model ─────────────────────────────────
@@ -317,8 +320,8 @@ def train() -> None:
         print()
         model_path = MODELS_DIR / "ensemble_model.joblib"
         joblib.dump(ensemble, str(model_path))
-        _save_checkpoint(4, {"cv_auc_mean": float(cv_scores.mean()),
-                             "cv_auc_std": float(cv_scores.std()) if len(cv_scores) > 1 else 0.0})
+        _save_checkpoint(4, {"cv_auc_mean": cv_auc_mean,
+                             "cv_auc_std": cv_auc_std})
     else:
         model_path = MODELS_DIR / "ensemble_model.joblib"
         ensemble = joblib.load(str(model_path))
@@ -332,13 +335,11 @@ def train() -> None:
         y_pred = ensemble.predict(X_test)
         y_proba = ensemble.predict_proba(X_test)[:, 1]
 
-        cv_mean = float(cv_scores.mean())
-        cv_std = float(cv_scores.std()) if len(cv_scores) > 1 else 0.0
         metrics = {
             "accuracy": round(float(accuracy_score(y_test, y_pred)), 4),
             "roc_auc": round(float(roc_auc_score(y_test, y_proba)), 4),
-            "cv_auc_mean": round(cv_mean, 4),
-            "cv_auc_std": round(cv_std, 4),
+            "cv_auc_mean": round(cv_auc_mean, 4),
+            "cv_auc_std": round(cv_auc_std, 4),
             "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
             "classification_report": classification_report(
                 y_test, y_pred, output_dict=True
@@ -365,8 +366,6 @@ def train() -> None:
     step_start = time.time()
     print(f"[Step 6/{total_steps}] Saving model and metrics...")
     model_path = MODELS_DIR / "ensemble_model.joblib"
-    if resume_after < 4:
-        joblib.dump(ensemble, str(model_path))
     print(f"  Model  → {model_path}")
 
     results_path = RESULTS_DIR / "metrics.json"

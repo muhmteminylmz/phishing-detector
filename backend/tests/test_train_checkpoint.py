@@ -1,5 +1,6 @@
 """Tests for training checkpoint / resume functionality."""
 import json
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -8,12 +9,20 @@ import numpy as np
 import pytest
 
 
+def _tmp_checkpoint_path() -> Path:
+    """Create a temporary file path for checkpoint testing."""
+    fd, path = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    os.unlink(path)  # We want the path, not the file itself
+    return Path(path)
+
+
 def test_save_and_load_checkpoint() -> None:
     """Checkpoint round-trips through JSON correctly."""
-    from ml.train import _save_checkpoint, _load_checkpoint, CHECKPOINT_PATH
+    from ml.train import _save_checkpoint, _load_checkpoint
 
-    with patch("ml.train.CHECKPOINT_PATH", Path(tempfile.mktemp(suffix=".json"))):
-        from ml.train import CHECKPOINT_PATH as tmp_path
+    tmp_path = _tmp_checkpoint_path()
+    with patch("ml.train.CHECKPOINT_PATH", tmp_path):
         try:
             # No checkpoint yet
             assert _load_checkpoint() is None
@@ -33,8 +42,8 @@ def test_clear_checkpoint() -> None:
     """_clear_checkpoint removes the file."""
     from ml.train import _save_checkpoint, _clear_checkpoint, _load_checkpoint
 
-    with patch("ml.train.CHECKPOINT_PATH", Path(tempfile.mktemp(suffix=".json"))):
-        from ml.train import CHECKPOINT_PATH as tmp_path
+    tmp_path = _tmp_checkpoint_path()
+    with patch("ml.train.CHECKPOINT_PATH", tmp_path):
         try:
             _save_checkpoint(1)
             assert _load_checkpoint() is not None
@@ -49,8 +58,8 @@ def test_checkpoint_without_data() -> None:
     """Checkpoint works when no extra data is provided."""
     from ml.train import _save_checkpoint, _load_checkpoint
 
-    with patch("ml.train.CHECKPOINT_PATH", Path(tempfile.mktemp(suffix=".json"))):
-        from ml.train import CHECKPOINT_PATH as tmp_path
+    tmp_path = _tmp_checkpoint_path()
+    with patch("ml.train.CHECKPOINT_PATH", tmp_path):
         try:
             _save_checkpoint(4)
             ckpt = _load_checkpoint()
