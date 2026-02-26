@@ -153,6 +153,6 @@ Write-Host "  ╠═════════════════════
 Write-Host "  ║  Diğer komutlar:                                            ║" -ForegroundColor Green
 Write-Host "  ║    docker compose logs -f    → Canlı logları izle           ║"
 Write-Host "  ║    docker compose down       → Tüm servisleri durdur        ║"
-Write-Host "  ║    make help                 → Tüm komutları listele         ║"
+Write-Host "  ║    make help                 → Tüm komutları listele        ║"
 Write-Host "  ╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
