@@ -38,6 +38,20 @@ FEATURE_EXTRACTOR = FeatureExtractor()
 FEATURE_NAMES = FEATURE_EXTRACTOR._feature_names()
 
 
+def _build_ensemble() -> VotingClassifier:
+    """Create a fresh ensemble classifier with the standard configuration."""
+    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    xgb_clf = xgb.XGBClassifier(
+        n_estimators=100, use_label_encoder=False,
+        eval_metric="logloss", random_state=42, verbosity=0,
+    )
+    lgb_clf = lgb.LGBMClassifier(n_estimators=100, random_state=42, verbose=-1)
+    return VotingClassifier(
+        estimators=[("rf", rf), ("xgb", xgb_clf), ("lgb", lgb_clf)],
+        voting="soft",
+    )
+
+
 def _make_phishing_sample(rng: np.random.Generator) -> dict:
     s = {k: 0 for k in FEATURE_NAMES}
     s["url_length"] = int(rng.integers(80, 250))
@@ -168,17 +182,7 @@ def train() -> None:
     # ── Step 2: Build ensemble ────────────────────────────────────
     step_start = time.time()
     print(f"[Step 2/{len(steps)}] Building ensemble model...")
-    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    xgb_clf = xgb.XGBClassifier(
-        n_estimators=100, use_label_encoder=False,
-        eval_metric="logloss", random_state=42, verbosity=0,
-    )
-    lgb_clf = lgb.LGBMClassifier(n_estimators=100, random_state=42, verbose=-1)
-
-    ensemble = VotingClassifier(
-        estimators=[("rf", rf), ("xgb", xgb_clf), ("lgb", lgb_clf)],
-        voting="soft",
-    )
+    ensemble = _build_ensemble()
     elapsed = time.time() - step_start
     print(f"  ✅ Ensemble ready — RF + XGBoost + LightGBM ({elapsed:.1f}s)\n")
 
@@ -192,15 +196,7 @@ def train() -> None:
         tqdm(skf.split(X_train, y_train), total=n_folds, desc="  CV folds", unit="fold"),
         1,
     ):
-        fold_model = VotingClassifier(
-            estimators=[
-                ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
-                ("xgb", xgb.XGBClassifier(n_estimators=100, use_label_encoder=False,
-                                           eval_metric="logloss", random_state=42, verbosity=0)),
-                ("lgb", lgb.LGBMClassifier(n_estimators=100, random_state=42, verbose=-1)),
-            ],
-            voting="soft",
-        )
+        fold_model = _build_ensemble()
         fold_model.fit(X_train[train_idx], y_train[train_idx])
         proba = fold_model.predict_proba(X_train[val_idx])[:, 1]
         score = roc_auc_score(y_train[val_idx], proba)

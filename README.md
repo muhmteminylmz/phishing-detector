@@ -99,7 +99,7 @@ Model eğitimi sırasında terminalde her adımın ilerlemesini, tamamlanma yüz
 ```
 
 **Arka planda çalışan Vmmem nedir?**
-Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker'ın kullandığı WSL2 sanal makinesidir ve normaldir. Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
+Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker Desktop'ın kullandığı WSL2 sanal makinesidir ve yalnızca Windows'a özgüdür (Mac/Linux'ta görünmez). Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
 
 ---
 
