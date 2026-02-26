@@ -1,5 +1,6 @@
 # 🛡️ Phishing Detector
 
+> **🇹🇷 Adım adım detaylı Türkçe rehber → [KURULUM.md](KURULUM.md)**  
 > **Türkçe → [hemen aşağıda](#-türkçe--tek-tuşla-çalıştır)**  
 > **English → [scroll down](#-english--one-command-start)**
 
@@ -32,6 +33,11 @@ cd phishing-detector
 
 **Adım 2 — Tek komutla başlat:**
 
+Windows (CMD — en kolay yol, çift tıkla veya CMD'ye yaz):
+```
+start.bat
+```
+
 Windows (PowerShell):
 ```powershell
 powershell -ExecutionPolicy Bypass -File start.ps1
@@ -41,6 +47,8 @@ Mac / Linux:
 ```bash
 bash start.sh
 ```
+
+> **💡 Detaylı adım adım rehber için:** [KURULUM.md](KURULUM.md)
 
 Bu kadar. Script her şeyi kendi kendine yapar:
 - Gerekli tüm kütüphaneleri indirir (ilk seferinde ~2-5 dakika, sonraki çalıştırmalarda çok hızlı)
@@ -250,6 +258,13 @@ docker compose logs -f backend  # sadece backend
 [Get Docker Desktop](https://docs.docker.com/get-docker/) — no Python, Node.js, or database setup needed. Everything is downloaded automatically.
 
 ### Run
+
+Windows (CMD — easiest, double-click or type in CMD):
+```
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+start.bat
+```
 
 Windows (PowerShell — no WSL required):
 ```powershell
