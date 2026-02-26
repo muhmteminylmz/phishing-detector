@@ -31,6 +31,13 @@ cd phishing-detector
 ```
 
 **Adım 2 — Tek komutla başlat:**
+
+Windows (PowerShell):
+```powershell
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+Mac / Linux:
 ```bash
 bash start.sh
 ```
@@ -201,8 +208,20 @@ make help
 
 ### Sorun Giderme
 
+**WSL hatası: `execvpe(/bin/bash) failed: No such file or directory`:**
+→ Bu hata Windows'ta WSL (Linux Alt Sistemi) kurulu olmadığında oluşur.
+**Çözüm:** PowerShell ile başlat (WSL gerektirmez):
+```powershell
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+Veya WSL'i kurmak istersen PowerShell'i **yönetici olarak** açıp şunu çalıştır:
+```powershell
+wsl --install
+```
+Sonra bilgisayarı yeniden başlat ve `bash start.sh` komutunu tekrar dene.
+
 **"Docker bulunamadı" hatası:**
-→ Docker Desktop'ı yükle ve başlat, sonra tekrar `bash start.sh` çalıştır.
+→ Docker Desktop'ı yükle ve başlat, sonra tekrar başlat.
 
 **"Docker çalışmıyor" hatası:**
 → Docker Desktop uygulamasını aç (sağ alttaki sistem saatinde Docker simgesi görünmeli).
@@ -232,6 +251,14 @@ docker compose logs -f backend  # sadece backend
 
 ### Run
 
+Windows (PowerShell — no WSL required):
+```powershell
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+Mac / Linux:
 ```bash
 git clone https://github.com/muhmteminylmz/phishing-detector
 cd phishing-detector
