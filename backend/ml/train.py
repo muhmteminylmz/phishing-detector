@@ -6,6 +6,7 @@ evaluates it, and saves the result to ml/models/.
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +18,8 @@ from sklearn.metrics import (
     confusion_matrix,
     roc_auc_score,
 )
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from tqdm import tqdm
 import xgboost as xgb
 import lightgbm as lgb
 import joblib
@@ -120,10 +122,10 @@ def generate_dataset(n_phishing: int = 1000, n_legit: int = 1000) -> pd.DataFram
     rng = np.random.default_rng(42)
     rows = []
     labels = []
-    for _ in range(n_phishing):
+    for _ in tqdm(range(n_phishing), desc="  Phishing samples", unit="sample"):
         rows.append(_make_phishing_sample(rng))
         labels.append(1)
-    for _ in range(n_legit):
+    for _ in tqdm(range(n_legit), desc="  Legit samples   ", unit="sample"):
         rows.append(_make_legit_sample(rng))
         labels.append(0)
     df = pd.DataFrame(rows, columns=FEATURE_NAMES)
@@ -132,16 +134,40 @@ def generate_dataset(n_phishing: int = 1000, n_legit: int = 1000) -> pd.DataFram
 
 
 def train() -> None:
-    print("Generating dataset...")
+    total_start = time.time()
+    steps = [
+        "Dataset generation",
+        "Build ensemble model",
+        "Cross-validation (5-fold)",
+        "Train final model",
+        "Evaluation",
+        "Save model & metrics",
+    ]
+    print("=" * 60)
+    print("  🛡️  Phishing Detector — Model Training")
+    print("=" * 60)
+    print(f"  Steps: {len(steps)}")
+    for i, s in enumerate(steps, 1):
+        print(f"    {i}. {s}")
+    print("=" * 60)
+    print()
+
+    # ── Step 1: Generate dataset ──────────────────────────────────
+    step_start = time.time()
+    print(f"[Step 1/{len(steps)}] Generating dataset...")
     df = generate_dataset(1000, 1000)
     X = df[FEATURE_NAMES].values
     y = df["label"].values
+    elapsed = time.time() - step_start
+    print(f"  ✅ Dataset ready — {len(df)} samples ({elapsed:.1f}s)\n")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
     )
 
-    print("Building ensemble model...")
+    # ── Step 2: Build ensemble ────────────────────────────────────
+    step_start = time.time()
+    print(f"[Step 2/{len(steps)}] Building ensemble model...")
     rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     xgb_clf = xgb.XGBClassifier(
         n_estimators=100, use_label_encoder=False,
@@ -153,15 +179,46 @@ def train() -> None:
         estimators=[("rf", rf), ("xgb", xgb_clf), ("lgb", lgb_clf)],
         voting="soft",
     )
+    elapsed = time.time() - step_start
+    print(f"  ✅ Ensemble ready — RF + XGBoost + LightGBM ({elapsed:.1f}s)\n")
 
-    print("Cross-validating (5-fold)...")
-    cv_scores = cross_val_score(ensemble, X_train, y_train, cv=5, scoring="roc_auc")
-    print(f"  CV AUC: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+    # ── Step 3: Cross-validation ──────────────────────────────────
+    step_start = time.time()
+    n_folds = 5
+    print(f"[Step 3/{len(steps)}] Cross-validating ({n_folds}-fold)...")
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+    fold_scores = []
+    for fold_idx, (train_idx, val_idx) in enumerate(
+        tqdm(skf.split(X_train, y_train), total=n_folds, desc="  CV folds", unit="fold"),
+        1,
+    ):
+        fold_model = VotingClassifier(
+            estimators=[
+                ("rf", RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)),
+                ("xgb", xgb.XGBClassifier(n_estimators=100, use_label_encoder=False,
+                                           eval_metric="logloss", random_state=42, verbosity=0)),
+                ("lgb", lgb.LGBMClassifier(n_estimators=100, random_state=42, verbose=-1)),
+            ],
+            voting="soft",
+        )
+        fold_model.fit(X_train[train_idx], y_train[train_idx])
+        proba = fold_model.predict_proba(X_train[val_idx])[:, 1]
+        score = roc_auc_score(y_train[val_idx], proba)
+        fold_scores.append(score)
+    cv_scores = np.array(fold_scores)
+    elapsed = time.time() - step_start
+    print(f"  ✅ CV AUC: {cv_scores.mean():.4f} ± {cv_scores.std():.4f} ({elapsed:.1f}s)\n")
 
-    print("Training final model...")
+    # ── Step 4: Train final model ─────────────────────────────────
+    step_start = time.time()
+    print(f"[Step 4/{len(steps)}] Training final model on full training set...")
     ensemble.fit(X_train, y_train)
+    elapsed = time.time() - step_start
+    print(f"  ✅ Training complete ({elapsed:.1f}s)\n")
 
-    print("Evaluating...")
+    # ── Step 5: Evaluate ──────────────────────────────────────────
+    step_start = time.time()
+    print(f"[Step 5/{len(steps)}] Evaluating on test set...")
     y_pred = ensemble.predict(X_test)
     y_proba = ensemble.predict_proba(X_test)[:, 1]
 
@@ -175,19 +232,31 @@ def train() -> None:
             y_test, y_pred, output_dict=True
         ),
     }
+    elapsed = time.time() - step_start
     print(f"  Accuracy: {metrics['accuracy']}")
     print(f"  ROC-AUC:  {metrics['roc_auc']}")
+    print(f"  ✅ Evaluation complete ({elapsed:.1f}s)\n")
 
-    # Save model
+    # ── Step 6: Save ──────────────────────────────────────────────
+    step_start = time.time()
+    print(f"[Step 6/{len(steps)}] Saving model and metrics...")
     model_path = MODELS_DIR / "ensemble_model.joblib"
     joblib.dump(ensemble, str(model_path))
-    print(f"Model saved to {model_path}")
+    print(f"  Model  → {model_path}")
 
-    # Save metrics
     results_path = RESULTS_DIR / "metrics.json"
     with open(results_path, "w") as f:
         json.dump(metrics, f, indent=2)
-    print(f"Metrics saved to {results_path}")
+    print(f"  Metrics → {results_path}")
+    elapsed = time.time() - step_start
+    print(f"  ✅ Saved ({elapsed:.1f}s)\n")
+
+    # ── Summary ───────────────────────────────────────────────────
+    total_elapsed = time.time() - total_start
+    minutes, seconds = divmod(int(total_elapsed), 60)
+    print("=" * 60)
+    print(f"  🎉 Training complete!  Total time: {minutes}m {seconds}s")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

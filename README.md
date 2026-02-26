@@ -65,6 +65,73 @@ Ve tarayıcın **http://localhost** adresinde otomatik açılacak:
 
 ---
 
+### Model Eğitimi (Training) – İlerleme Takibi
+
+Model eğitimi sırasında terminalde her adımın ilerlemesini, tamamlanma yüzdesini ve geçen süreyi göreceksin:
+
+```
+============================================================
+  🛡️  Phishing Detector — Model Training
+============================================================
+  Steps: 6
+    1. Dataset generation
+    2. Build ensemble model
+    3. Cross-validation (5-fold)
+    4. Train final model
+    5. Evaluation
+    6. Save model & metrics
+============================================================
+
+[Step 1/6] Generating dataset...
+  Phishing samples: 100%|████████████| 1000/1000
+  Legit samples   : 100%|████████████| 1000/1000
+  ✅ Dataset ready — 2000 samples (0.3s)
+
+[Step 3/6] Cross-validating (5-fold)...
+  CV folds: 100%|████████████| 5/5
+  ✅ CV AUC: 0.9998 ± 0.0002 (12.4s)
+
+...
+
+============================================================
+  🎉 Training complete!  Total time: 0m 18s
+============================================================
+```
+
+**Arka planda çalışan Vmmem nedir?**
+Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker'ın kullandığı WSL2 sanal makinesidir ve normaldir. Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
+
+---
+
+### Uzak Bilgisayarda (Remote) Eğitim
+
+Projeyi uzak bir sunucuda (VPS, bulut VM, üniversite sunucusu vb.) eğitmek için:
+
+```bash
+# 1. Uzak sunucuya bağlan
+ssh kullanici@sunucu-adresi
+
+# 2. Projeyi indir
+git clone https://github.com/muhmteminylmz/phishing-detector
+cd phishing-detector
+
+# 3. Docker kur (Linux sunucularda)
+curl -fsSL https://get.docker.com | sh
+
+# 4. Başlat
+bash start.sh
+```
+
+> **İpucu:** SSH bağlantısı kesilse bile eğitimin devam etmesi için `screen` veya `tmux` kullan:
+> ```bash
+> tmux new -s training
+> bash start.sh
+> # Ctrl+B, D ile çık — eğitim arka planda devam eder
+> # Tekrar bağlanmak için: tmux attach -t training
+> ```
+
+---
+
 ### Sık Kullanılan Komutlar
 
 ```bash
