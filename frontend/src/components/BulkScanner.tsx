@@ -1,9 +1,12 @@
 import React, { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { bulkScan, getBulkStatus } from '../services/api'
-import type { BulkScanStatus } from '../types'
+import { scanUrlLocally } from '../services/phishingEngine'
+import type { BulkScanStatus, ScanResult } from '../types'
 import toast from 'react-hot-toast'
 import { clsx } from 'clsx'
+
+const STATIC_MODE = import.meta.env.VITE_STATIC_MODE === 'true'
 
 const BulkScanner: React.FC = () => {
   const [text, setText] = useState('')
@@ -34,17 +37,41 @@ const BulkScanner: React.FC = () => {
     if (urls.length > 100) return toast.error('Maximum 100 URLs allowed')
     setLoading(true)
     try {
-      const { task_id } = await bulkScan(urls)
-      toast.success('Bulk scan started')
-      // Poll for status
-      const poll = async () => {
-        const status = await getBulkStatus(task_id)
-        setTaskStatus(status)
-        if (status.status !== 'completed' && status.status !== 'failed') {
-          setTimeout(poll, 2000)
+      if (STATIC_MODE) {
+        // Client-side bulk scan
+        const results: ScanResult[] = []
+        const taskId = crypto.randomUUID()
+        setTaskStatus({
+          task_id: taskId,
+          status: 'running',
+          total_urls: urls.length,
+          processed_urls: 0,
+          created_at: new Date().toISOString(),
+        })
+        for (let i = 0; i < urls.length; i++) {
+          const r = await scanUrlLocally(urls[i])
+          results.push(r as ScanResult)
+          setTaskStatus(prev => prev ? {
+            ...prev,
+            processed_urls: i + 1,
+            results: [...results],
+          } : prev)
         }
+        setTaskStatus(prev => prev ? { ...prev, status: 'completed', completed_at: new Date().toISOString() } : prev)
+        toast.success('Bulk scan completed')
+      } else {
+        const { task_id } = await bulkScan(urls)
+        toast.success('Bulk scan started')
+        // Poll for status
+        const poll = async () => {
+          const status = await getBulkStatus(task_id)
+          setTaskStatus(status)
+          if (status.status !== 'completed' && status.status !== 'failed') {
+            setTimeout(poll, 2000)
+          }
+        }
+        await poll()
       }
-      await poll()
     } catch (err) {
       toast.error('Bulk scan failed')
     } finally {
@@ -54,8 +81,8 @@ const BulkScanner: React.FC = () => {
 
   const handleExport = () => {
     if (!taskStatus?.results) return
-    const rows = taskStatus.results.map((r: Record<string, unknown>) =>
-      [r['url'], r['is_phishing'], r['risk_level'], r['risk_score'], r['confidence']].join(',')
+    const rows = taskStatus.results.map((r) =>
+      [r.url, r.is_phishing, r.risk_level, r.risk_score, r.confidence].join(',')
     )
     const csv = ['url,is_phishing,risk_level,risk_score,confidence', ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -142,14 +169,14 @@ const BulkScanner: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {taskStatus.results.map((r: Record<string, unknown>, i: number) => (
+                    {taskStatus.results.map((r, i) => (
                       <tr key={i} className="border-b border-gray-800/50">
-                        <td className="py-1 pr-4 max-w-xs truncate text-gray-300">{r['url'] as string}</td>
+                        <td className="py-1 pr-4 max-w-xs truncate text-gray-300">{r.url}</td>
                         <td className="py-1 pr-4 text-sm">
-                          {r['is_phishing'] ? '🚨' : '✅'}
+                          {r.is_phishing ? '🚨' : '✅'}
                         </td>
-                        <td className="py-1 pr-4 text-gray-300">{r['risk_level'] as string}</td>
-                        <td className="py-1 text-gray-300">{r['risk_score'] as number}</td>
+                        <td className="py-1 pr-4 text-gray-300">{r.risk_level}</td>
+                        <td className="py-1 text-gray-300">{r.risk_score}</td>
                       </tr>
                     ))}
                   </tbody>

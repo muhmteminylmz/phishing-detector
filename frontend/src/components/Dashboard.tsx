@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useScanner } from '../hooks/useScanner'
+import { useLocalScanner } from '../hooks/useLocalScanner'
 import { useStats } from '../hooks/useStats'
+import { useLocalStats } from '../hooks/useLocalStats'
 import { getScanHistory } from '../services/api'
 import URLScanner from './URLScanner'
 import ScanResultComponent from './ScanResult'
@@ -10,23 +12,29 @@ import {
 } from 'recharts'
 import type { ScanResult } from '../types'
 
+const STATIC_MODE = import.meta.env.VITE_STATIC_MODE === 'true'
 const STAT_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#a855f7']
-const RISK_PIE_COLORS = {
-  LOW: '#22c55e',
-  MEDIUM: '#eab308',
-  HIGH: '#f97316',
-  CRITICAL: '#ef4444',
-}
-
 const Dashboard: React.FC = () => {
-  const { result, loading, scan } = useScanner()
-  const { stats } = useStats(30000)
+  const remote = useScanner()
+  const local = useLocalScanner()
+  const { result, loading, scan } = STATIC_MODE ? local : remote
+  const remoteStats = useStats(30000)
+  const localStats = useLocalStats()
+  const { stats } = STATIC_MODE ? localStats : remoteStats
   const [history, setHistory] = useState<ScanResult[]>([])
 
   useEffect(() => {
-    getScanHistory(0, 10)
-      .then(setHistory)
-      .catch(() => {})
+    if (STATIC_MODE) {
+      try {
+        const raw = localStorage.getItem('scan_history')
+        const items = raw ? JSON.parse(raw) : []
+        setHistory(items.slice(0, 10))
+      } catch { /* ignore */ }
+    } else {
+      getScanHistory(0, 10)
+        .then(setHistory)
+        .catch(() => {})
+    }
   }, [result])
 
   const statCards = [

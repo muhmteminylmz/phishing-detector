@@ -6,7 +6,23 @@
 
 ---
 
-## 🇹🇷 Türkçe — Tek Tuşla Çalıştır
+## 🌐 GitHub Pages — Tarayıcıda Çalışan Canlı Demo
+
+Uygulamanın hafif sürümü GitHub Pages'te yayınlanır ve tamamen **tarayıcıda** çalışır.
+Hiçbir kurulum, Docker, sunucu veya model eğitimi gerektirmez.
+
+👉 **https://muhmteminylmz.github.io/phishing-detector/**
+
+- ✅ ML modeli önceden eğitilmiş, JSON olarak tarayıcıya gömülmüştür
+- ✅ URL tarama tamamen istemci tarafında çalışır (sunucuya veri gönderilmez)
+- ✅ Tarama geçmişi ve istatistikler localStorage'da tutulur
+- ✅ `main` branch'e her push'ta GitHub Actions ile otomatik güncellenir
+
+> **Not:** GitHub Pages sürümü yalnızca URL'nin yapısal özelliklerini analiz eder. SSL sertifikası, WHOIS ve HTML analizi gibi sunucu taraflı özellikler yalnızca Docker ile tam sürümde kullanılabilir.
+
+---
+
+## 🇹🇷 Türkçe — Tek Tuşla Çalıştır (Docker)
 
 ### Tek Gereksinim: Docker
 
@@ -204,7 +220,15 @@ docker compose logs -f backend  # sadece backend
 
 ## 🇬🇧 English — One-Command Start
 
-### Only requirement: Docker
+### Try it now — no install needed
+
+A lightweight version of the app runs entirely in your browser on GitHub Pages:
+
+👉 **https://muhmteminylmz.github.io/phishing-detector/**
+
+> The GitHub Pages version uses a pre-trained ML model exported to JSON. URL scanning runs 100% client-side — no data is sent to any server. Scan history and stats are stored in localStorage.
+
+### Full version with Docker
 
 [Get Docker Desktop](https://docs.docker.com/get-docker/) — no Python, Node.js, or database setup needed. Everything is downloaded automatically.
 

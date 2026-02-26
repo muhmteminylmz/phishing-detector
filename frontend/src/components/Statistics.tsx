@@ -5,15 +5,25 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts'
 
+const STATIC_MODE = import.meta.env.VITE_STATIC_MODE === 'true'
+
 const Statistics: React.FC = () => {
   const [history, setHistory] = useState<ScanResult[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getScanHistory(0, 100)
-      .then(setHistory)
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    if (STATIC_MODE) {
+      try {
+        const raw = localStorage.getItem('scan_history')
+        setHistory(raw ? JSON.parse(raw) : [])
+      } catch { /* ignore */ }
+      setLoading(false)
+    } else {
+      getScanHistory(0, 100)
+        .then(setHistory)
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
   }, [])
 
   // Group by date
