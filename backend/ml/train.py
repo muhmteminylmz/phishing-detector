@@ -2,6 +2,9 @@
 Training script for the ensemble phishing detection model.
 Generates a realistic synthetic dataset, trains an ensemble model,
 evaluates it, and saves the result to ml/models/.
+
+Supports checkpoint/resume: if the process is interrupted (e.g. PC
+shutdown), re-running this script will skip already-completed steps.
 """
 import json
 import os
@@ -31,11 +34,38 @@ from app.models.feature_extractor import FeatureExtractor  # noqa: E402
 
 RESULTS_DIR = Path(__file__).parent / "results"
 MODELS_DIR = Path(__file__).parent / "models"
+CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
 FEATURE_EXTRACTOR = FeatureExtractor()
 FEATURE_NAMES = FEATURE_EXTRACTOR._feature_names()
+
+CHECKPOINT_PATH = CHECKPOINT_DIR / "training_state.json"
+
+
+def _save_checkpoint(step: int, data: dict | None = None) -> None:
+    """Persist current training progress so we can resume later."""
+    state = {"completed_step": step}
+    if data:
+        state["data"] = data
+    with open(CHECKPOINT_PATH, "w") as f:
+        json.dump(state, f)
+
+
+def _load_checkpoint() -> dict | None:
+    """Return the last saved checkpoint, or *None* if none exists."""
+    if CHECKPOINT_PATH.exists():
+        with open(CHECKPOINT_PATH) as f:
+            return json.load(f)
+    return None
+
+
+def _clear_checkpoint() -> None:
+    """Remove the checkpoint file after training finishes successfully."""
+    if CHECKPOINT_PATH.exists():
+        CHECKPOINT_PATH.unlink()
 
 
 def _build_ensemble() -> VotingClassifier:
@@ -149,7 +179,7 @@ def generate_dataset(n_phishing: int = 1000, n_legit: int = 1000) -> pd.DataFram
 
 def train() -> None:
     total_start = time.time()
-    steps = [
+    step_names = [
         "Dataset generation",
         "Build ensemble model",
         "Cross-validation (5-fold)",
@@ -157,23 +187,62 @@ def train() -> None:
         "Evaluation",
         "Save model & metrics",
     ]
+    total_steps = len(step_names)
+
+    # ── Check for a previous checkpoint ───────────────────────────
+    checkpoint = _load_checkpoint()
+    resume_after = checkpoint["completed_step"] if checkpoint else 0
+
     print("=" * 60)
     print("  🛡️  Phishing Detector — Model Training")
     print("=" * 60)
-    print(f"  Steps: {len(steps)}")
-    for i, s in enumerate(steps, 1):
-        print(f"    {i}. {s}")
+    print(f"  Steps: {total_steps}")
+    for i, s in enumerate(step_names, 1):
+        marker = "✅" if i <= resume_after else f" {i}."
+        print(f"    {marker} {s}")
+    if resume_after:
+        print(f"\n  ▶ Resuming from step {resume_after + 1} "
+              f"(steps 1-{resume_after} already done)")
     print("=" * 60)
     print()
 
+    step_times: list[float] = []
+
+    def _eta() -> str:
+        """Estimate remaining time based on elapsed step times."""
+        if not step_times:
+            return ""
+        avg = sum(step_times) / len(step_times)
+        done = resume_after + len(step_times)
+        remaining = max(total_steps - done, 0)
+        secs = int(avg * remaining)
+        if secs < 60:
+            return f"  ⏱️  Estimated remaining: ~{secs}s"
+        minutes, seconds = divmod(secs, 60)
+        return f"  ⏱️  Estimated remaining: ~{minutes}m {seconds}s"
+
     # ── Step 1: Generate dataset ──────────────────────────────────
-    step_start = time.time()
-    print(f"[Step 1/{len(steps)}] Generating dataset...")
-    df = generate_dataset(1000, 1000)
-    X = df[FEATURE_NAMES].values
-    y = df["label"].values
-    elapsed = time.time() - step_start
-    print(f"  ✅ Dataset ready — {len(df)} samples ({elapsed:.1f}s)\n")
+    if resume_after < 1:
+        step_start = time.time()
+        print(f"[Step 1/{total_steps}] Generating dataset...")
+        df = generate_dataset(1000, 1000)
+        X = df[FEATURE_NAMES].values
+        y = df["label"].values
+        elapsed = time.time() - step_start
+        step_times.append(elapsed)
+        print(f"  ✅ Dataset ready — {len(df)} samples ({elapsed:.1f}s)")
+        print(_eta())
+        print()
+        # Save dataset to checkpoint so we can reload on resume
+        dataset_ckpt = CHECKPOINT_DIR / "dataset.npz"
+        np.savez(str(dataset_ckpt), X=X, y=y)
+        _save_checkpoint(1)
+    else:
+        print(f"[Step 1/{total_steps}] Dataset — loaded from checkpoint ✅")
+        dataset_ckpt = CHECKPOINT_DIR / "dataset.npz"
+        data = np.load(str(dataset_ckpt))
+        X, y = data["X"], data["y"]
+        print()
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=42
@@ -181,63 +250,123 @@ def train() -> None:
 
     # ── Step 2: Build ensemble ────────────────────────────────────
     step_start = time.time()
-    print(f"[Step 2/{len(steps)}] Building ensemble model...")
+    if resume_after < 2:
+        print(f"[Step 2/{total_steps}] Building ensemble model...")
+    else:
+        print(f"[Step 2/{total_steps}] Ensemble model — rebuilt ✅")
     ensemble = _build_ensemble()
     elapsed = time.time() - step_start
-    print(f"  ✅ Ensemble ready — RF + XGBoost + LightGBM ({elapsed:.1f}s)\n")
+    step_times.append(elapsed)
+    if resume_after < 2:
+        print(f"  ✅ Ensemble ready — RF + XGBoost + LightGBM ({elapsed:.1f}s)")
+        print(_eta())
+        _save_checkpoint(2)
+    print()
 
     # ── Step 3: Cross-validation ──────────────────────────────────
-    step_start = time.time()
-    n_folds = 5
-    print(f"[Step 3/{len(steps)}] Cross-validating ({n_folds}-fold)...")
-    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
-    fold_scores = []
-    for fold_idx, (train_idx, val_idx) in enumerate(
-        tqdm(skf.split(X_train, y_train), total=n_folds, desc="  CV folds", unit="fold"),
-        1,
-    ):
-        fold_model = _build_ensemble()
-        fold_model.fit(X_train[train_idx], y_train[train_idx])
-        proba = fold_model.predict_proba(X_train[val_idx])[:, 1]
-        score = roc_auc_score(y_train[val_idx], proba)
-        fold_scores.append(score)
-    cv_scores = np.array(fold_scores)
-    elapsed = time.time() - step_start
-    print(f"  ✅ CV AUC: {cv_scores.mean():.4f} ± {cv_scores.std():.4f} ({elapsed:.1f}s)\n")
+    if resume_after < 3:
+        step_start = time.time()
+        n_folds = 5
+        print(f"[Step 3/{total_steps}] Cross-validating ({n_folds}-fold)...")
+        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+        fold_scores = []
+        # Check if some folds were already completed
+        cv_ckpt = checkpoint.get("data", {}) if checkpoint else {}
+        start_fold = len(cv_ckpt.get("fold_scores", []))
+        if start_fold:
+            fold_scores = cv_ckpt["fold_scores"]
+            print(f"  ▶ Resuming CV from fold {start_fold + 1}/{n_folds}")
+        for fold_idx, (train_idx, val_idx) in enumerate(
+            tqdm(skf.split(X_train, y_train), total=n_folds, desc="  CV folds",
+                 unit="fold", initial=start_fold),
+            1,
+        ):
+            if fold_idx <= start_fold:
+                continue
+            fold_model = _build_ensemble()
+            fold_model.fit(X_train[train_idx], y_train[train_idx])
+            proba = fold_model.predict_proba(X_train[val_idx])[:, 1]
+            score = roc_auc_score(y_train[val_idx], proba)
+            fold_scores.append(score)
+            # Checkpoint after each fold
+            _save_checkpoint(2, {"fold_scores": fold_scores})
+        cv_scores = np.array(fold_scores)
+        elapsed = time.time() - step_start
+        step_times.append(elapsed)
+        print(f"  ✅ CV AUC: {cv_scores.mean():.4f} ± {cv_scores.std():.4f} ({elapsed:.1f}s)")
+        print(_eta())
+        print()
+        _save_checkpoint(3, {"cv_auc_mean": float(cv_scores.mean()),
+                             "cv_auc_std": float(cv_scores.std())})
+    else:
+        cv_data = checkpoint.get("data", {})
+        cv_scores = np.array([cv_data.get("cv_auc_mean", 0.0)])
+        print(f"[Step 3/{total_steps}] Cross-validation — loaded from checkpoint ✅")
+        print(f"  CV AUC: {cv_data.get('cv_auc_mean', 0):.4f} ± {cv_data.get('cv_auc_std', 0):.4f}")
+        print()
 
     # ── Step 4: Train final model ─────────────────────────────────
-    step_start = time.time()
-    print(f"[Step 4/{len(steps)}] Training final model on full training set...")
-    ensemble.fit(X_train, y_train)
-    elapsed = time.time() - step_start
-    print(f"  ✅ Training complete ({elapsed:.1f}s)\n")
+    if resume_after < 4:
+        step_start = time.time()
+        print(f"[Step 4/{total_steps}] Training final model on full training set...")
+        ensemble.fit(X_train, y_train)
+        elapsed = time.time() - step_start
+        step_times.append(elapsed)
+        print(f"  ✅ Training complete ({elapsed:.1f}s)")
+        print(_eta())
+        print()
+        model_path = MODELS_DIR / "ensemble_model.joblib"
+        joblib.dump(ensemble, str(model_path))
+        _save_checkpoint(4, {"cv_auc_mean": float(cv_scores.mean()),
+                             "cv_auc_std": float(cv_scores.std()) if len(cv_scores) > 1 else 0.0})
+    else:
+        model_path = MODELS_DIR / "ensemble_model.joblib"
+        ensemble = joblib.load(str(model_path))
+        print(f"[Step 4/{total_steps}] Final model — loaded from checkpoint ✅")
+        print()
 
     # ── Step 5: Evaluate ──────────────────────────────────────────
-    step_start = time.time()
-    print(f"[Step 5/{len(steps)}] Evaluating on test set...")
-    y_pred = ensemble.predict(X_test)
-    y_proba = ensemble.predict_proba(X_test)[:, 1]
+    if resume_after < 5:
+        step_start = time.time()
+        print(f"[Step 5/{total_steps}] Evaluating on test set...")
+        y_pred = ensemble.predict(X_test)
+        y_proba = ensemble.predict_proba(X_test)[:, 1]
 
-    metrics = {
-        "accuracy": round(float(accuracy_score(y_test, y_pred)), 4),
-        "roc_auc": round(float(roc_auc_score(y_test, y_proba)), 4),
-        "cv_auc_mean": round(float(cv_scores.mean()), 4),
-        "cv_auc_std": round(float(cv_scores.std()), 4),
-        "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
-        "classification_report": classification_report(
-            y_test, y_pred, output_dict=True
-        ),
-    }
-    elapsed = time.time() - step_start
-    print(f"  Accuracy: {metrics['accuracy']}")
-    print(f"  ROC-AUC:  {metrics['roc_auc']}")
-    print(f"  ✅ Evaluation complete ({elapsed:.1f}s)\n")
+        cv_mean = float(cv_scores.mean())
+        cv_std = float(cv_scores.std()) if len(cv_scores) > 1 else 0.0
+        metrics = {
+            "accuracy": round(float(accuracy_score(y_test, y_pred)), 4),
+            "roc_auc": round(float(roc_auc_score(y_test, y_proba)), 4),
+            "cv_auc_mean": round(cv_mean, 4),
+            "cv_auc_std": round(cv_std, 4),
+            "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
+            "classification_report": classification_report(
+                y_test, y_pred, output_dict=True
+            ),
+        }
+        elapsed = time.time() - step_start
+        step_times.append(elapsed)
+        print(f"  Accuracy: {metrics['accuracy']}")
+        print(f"  ROC-AUC:  {metrics['roc_auc']}")
+        print(f"  ✅ Evaluation complete ({elapsed:.1f}s)")
+        print(_eta())
+        print()
+        _save_checkpoint(5)
+    else:
+        print(f"[Step 5/{total_steps}] Evaluation — loaded from checkpoint ✅")
+        results_path = RESULTS_DIR / "metrics.json"
+        with open(results_path) as f:
+            metrics = json.load(f)
+        print(f"  Accuracy: {metrics['accuracy']}")
+        print(f"  ROC-AUC:  {metrics['roc_auc']}")
+        print()
 
     # ── Step 6: Save ──────────────────────────────────────────────
     step_start = time.time()
-    print(f"[Step 6/{len(steps)}] Saving model and metrics...")
+    print(f"[Step 6/{total_steps}] Saving model and metrics...")
     model_path = MODELS_DIR / "ensemble_model.joblib"
-    joblib.dump(ensemble, str(model_path))
+    if resume_after < 4:
+        joblib.dump(ensemble, str(model_path))
     print(f"  Model  → {model_path}")
 
     results_path = RESULTS_DIR / "metrics.json"
@@ -245,13 +374,22 @@ def train() -> None:
         json.dump(metrics, f, indent=2)
     print(f"  Metrics → {results_path}")
     elapsed = time.time() - step_start
+    step_times.append(elapsed)
     print(f"  ✅ Saved ({elapsed:.1f}s)\n")
+
+    # ── Cleanup checkpoint ────────────────────────────────────────
+    _clear_checkpoint()
+    dataset_ckpt = CHECKPOINT_DIR / "dataset.npz"
+    if dataset_ckpt.exists():
+        dataset_ckpt.unlink()
 
     # ── Summary ───────────────────────────────────────────────────
     total_elapsed = time.time() - total_start
     minutes, seconds = divmod(int(total_elapsed), 60)
     print("=" * 60)
     print(f"  🎉 Training complete!  Total time: {minutes}m {seconds}s")
+    if resume_after:
+        print(f"  (resumed from step {resume_after + 1})")
     print("=" * 60)
 
 

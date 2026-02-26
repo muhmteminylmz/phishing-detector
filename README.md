@@ -98,8 +98,57 @@ Model eğitimi sırasında terminalde her adımın ilerlemesini, tamamlanma yüz
 ============================================================
 ```
 
+Her adımdan sonra tahmini kalan süre (`⏱️ Estimated remaining: ~12s`) gösterilir, böylece eğitimin ne zaman biteceğini takip edebilirsin.
+
 **Arka planda çalışan Vmmem nedir?**
 Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker Desktop'ın kullandığı WSL2 sanal makinesidir ve yalnızca Windows'a özgüdür (Mac/Linux'ta görünmez). Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
+
+> **💡 Vmmem bellek kullanımını sınırlamak için:** `%USERPROFILE%\.wslconfig` dosyası oluşturup şunu ekle:
+> ```ini
+> [wsl2]
+> memory=4GB
+> processors=2
+> ```
+> Sonra PowerShell'de `wsl --shutdown` çalıştır ve Docker Desktop'ı yeniden başlat.
+
+---
+
+### PC Kapanırsa Ne Olur? (Checkpoint / Resume)
+
+Eğitim sırasında PC kapanırsa veya Docker durdurulursa **sorun yok** — eğitim kaldığı yerden devam eder:
+
+```bash
+# PC yeniden açıldıktan sonra sadece tekrar çalıştır:
+bash start.sh
+```
+
+Script otomatik olarak:
+- ✅ Tamamlanan adımları atlar (dataset, cross-validation vb.)
+- ✅ Kalan adımlardan devam eder
+- ✅ Tamamlandığında checkpoint dosyalarını temizler
+
+Terminalde şöyle bir çıktı göreceksin:
+
+```
+============================================================
+  🛡️  Phishing Detector — Model Training
+============================================================
+  Steps: 6
+    ✅ Dataset generation
+    ✅ Build ensemble model
+    ✅ Cross-validation (5-fold)
+     4. Train final model
+     5. Evaluation
+     6. Save model & metrics
+
+  ▶ Resuming from step 4 (steps 1-3 already done)
+============================================================
+```
+
+> **Not:** Eğitimi sıfırdan başlatmak istersen checkpoint klasörünü sil:
+> ```bash
+> rm -rf backend/ml/checkpoints/
+> ```
 
 ---
 
