@@ -80,7 +80,18 @@ echo -e "${YELLOW}[2/4]${NC} Yapılandırma dosyası kontrol ediliyor..."
 
 if [ ! -f ".env" ]; then
     cp .env.example .env
-    echo -e "  ${GREEN}✅ .env dosyası otomatik oluşturuldu${NC}"
+    # Güvenli bir SECRET_KEY üret ve .env dosyasına yaz
+    if command -v python3 &>/dev/null; then
+        NEW_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+    elif command -v openssl &>/dev/null; then
+        NEW_SECRET=$(openssl rand -base64 32 | tr -d '/+=' | head -c 43)
+    else
+        NEW_SECRET="auto-$(date +%s)-$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
+    fi
+    if [ -n "$NEW_SECRET" ]; then
+        sed -i.bak "s|SECRET_KEY=change-me-run-setup-sh|SECRET_KEY=${NEW_SECRET}|" .env && rm -f .env.bak
+    fi
+    echo -e "  ${GREEN}✅ .env dosyası oluşturuldu ve SECRET_KEY üretildi${NC}"
 else
     echo -e "  ${GREEN}✅ .env dosyası zaten mevcut${NC}"
 fi
