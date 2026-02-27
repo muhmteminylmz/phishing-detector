@@ -3,11 +3,15 @@ import secrets
 from pydantic_settings import BaseSettings
 from typing import List
 
+# Fallback secret used only when no SECRET_KEY is provided via .env or env var.
+# setup.sh / start.ps1 auto-generate a proper key when creating .env.
+_DEFAULT_SECRET_KEY = "insecure-fallback-run-setup-sh-to-generate"
+
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres123@localhost:5432/phishing_db"
     REDIS_URL: str = "redis://localhost:6379/0"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = _DEFAULT_SECRET_KEY
     MODEL_PATH: str = "./ml/models/ensemble_model.joblib"
     DEBUG: bool = False
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]

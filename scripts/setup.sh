@@ -89,7 +89,7 @@ if [ ! -f ".env" ]; then
         NEW_SECRET="auto-$(date +%s)-$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
     fi
     if [ -n "$NEW_SECRET" ]; then
-        sed -i "s|SECRET_KEY=change-me-run-setup-sh|SECRET_KEY=${NEW_SECRET}|" .env
+        sed -i.bak "s|SECRET_KEY=change-me-run-setup-sh|SECRET_KEY=${NEW_SECRET}|" .env && rm -f .env.bak
     fi
     echo -e "  ${GREEN}✅ .env dosyası oluşturuldu ve SECRET_KEY üretildi${NC}"
 else

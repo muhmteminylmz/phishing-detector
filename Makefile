@@ -136,7 +136,7 @@ _ensure_env:
 		cp .env.example .env; \
 		NEW_SECRET=$$(python3 -c "import secrets; print(secrets.token_urlsafe(32))" 2>/dev/null || openssl rand -base64 32 | tr -d '/+=' | head -c 43); \
 		if [ -n "$$NEW_SECRET" ]; then \
-			sed -i "s|SECRET_KEY=change-me-run-setup-sh|SECRET_KEY=$$NEW_SECRET|" .env; \
+			sed -i.bak "s|SECRET_KEY=change-me-run-setup-sh|SECRET_KEY=$$NEW_SECRET|" .env && rm -f .env.bak; \
 		fi; \
 		echo "$(GREEN)✅ .env dosyası oluşturuldu ve SECRET_KEY üretildi.$(RESET)"; \
 	fi
