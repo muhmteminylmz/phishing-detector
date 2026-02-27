@@ -1,11 +1,13 @@
+import secrets
+
 from pydantic_settings import BaseSettings
 from typing import List
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/phishing_db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres123@localhost:5432/phishing_db"
     REDIS_URL: str = "redis://localhost:6379/0"
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     MODEL_PATH: str = "./ml/models/ensemble_model.joblib"
     DEBUG: bool = False
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]

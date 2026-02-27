@@ -55,7 +55,13 @@ Write-Host "[2/4] Yapılandırma dosyası kontrol ediliyor..." -ForegroundColor 
 
 if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
-    Write-Host "  ✅ .env dosyası otomatik oluşturuldu" -ForegroundColor Green
+    # Güvenli bir SECRET_KEY üret ve .env dosyasına yaz
+    $bytes = New-Object byte[] 32
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $newSecret = [Convert]::ToBase64String($bytes) -replace '[/+=]',''
+    $newSecret = $newSecret.Substring(0, [Math]::Min(43, $newSecret.Length))
+    (Get-Content ".env") -replace 'SECRET_KEY=change-me-run-setup-sh', "SECRET_KEY=$newSecret" | Set-Content ".env"
+    Write-Host "  ✅ .env dosyası oluşturuldu ve SECRET_KEY üretildi" -ForegroundColor Green
 } else {
     Write-Host "  ✅ .env dosyası zaten mevcut" -ForegroundColor Green
 }

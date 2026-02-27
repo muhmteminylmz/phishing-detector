@@ -8,11 +8,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/phishing_db
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-changeme-in-production}
-      - MODEL_PATH=./ml/models/ensemble_model.joblib
-      - DEBUG=false
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgres123@postgres:5432/phishing_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SECRET_KEY=${SECRET_KEY:-change-me-run-setup-sh}
+      - MODEL_PATH=${MODEL_PATH:-./ml/models/ensemble_model.joblib}
+      - DEBUG=${DEBUG:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,15 +52,15 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: phishing_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-phishing_db}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
