@@ -6,7 +6,23 @@
 
 ---
 
-## 🇹🇷 Türkçe — Tek Tuşla Çalıştır
+## 🌐 GitHub Pages — Tarayıcıda Çalışan Canlı Demo
+
+Uygulamanın hafif sürümü GitHub Pages'te yayınlanır ve tamamen **tarayıcıda** çalışır.
+Hiçbir kurulum, Docker, sunucu veya model eğitimi gerektirmez.
+
+👉 **https://muhmteminylmz.github.io/phishing-detector/**
+
+- ✅ ML modeli önceden eğitilmiş, JSON olarak tarayıcıya gömülmüştür
+- ✅ URL tarama tamamen istemci tarafında çalışır (sunucuya veri gönderilmez)
+- ✅ Tarama geçmişi ve istatistikler localStorage'da tutulur
+- ✅ `main` branch'e her push'ta GitHub Actions ile otomatik güncellenir
+
+> **Not:** GitHub Pages sürümü yalnızca URL'nin yapısal özelliklerini analiz eder. SSL sertifikası, WHOIS ve HTML analizi gibi sunucu taraflı özellikler yalnızca Docker ile tam sürümde kullanılabilir.
+
+---
+
+## 🇹🇷 Türkçe — Tek Tuşla Çalıştır (Docker)
 
 ### Tek Gereksinim: Docker
 
@@ -51,9 +67,9 @@ bash start.sh
 > **💡 Detaylı adım adım rehber için:** [KURULUM.md](KURULUM.md)
 
 Bu kadar. Script her şeyi kendi kendine yapar:
-- Gerekli tüm kütüphaneleri indirir (ilk seferinde ~2-5 dakika, sonraki çalıştırmalarda çok hızlı)
+- Gerekli tüm kütüphaneleri indirir (ilk seferinde Docker image build edilir ve model eğitilir ~3-7 dk)
 - Veritabanını ve cache'i başlatır
-- ML modelini eğitir
+- **ML modeli zaten hazır gelir** — image içinde önceden eğitilmiştir, her seferinde yeniden eğitilmez
 - Backend ve frontend'i başlatır
 - Uygulama hazır olana kadar bekler
 - **Tarayıcıyı otomatik açar**
@@ -80,43 +96,21 @@ Ve tarayıcın **http://localhost** adresinde otomatik açılacak:
 
 ---
 
-### Model Eğitimi (Training) – İlerleme Takibi
+### Model Eğitimi — Otomatik ve Tek Seferlik
 
-Model eğitimi sırasında terminalde her adımın ilerlemesini, tamamlanma yüzdesini ve geçen süreyi göreceksin:
+ML modeli **Docker image build sırasında otomatik eğitilir** ve image'ın içine gömülür. Bu sayede:
 
-```
-============================================================
-  🛡️  Phishing Detector — Model Training
-============================================================
-  Steps: 6
-    1. Dataset generation
-    2. Build ensemble model
-    3. Cross-validation (5-fold)
-    4. Train final model
-    5. Evaluation
-    6. Save model & metrics
-============================================================
+- ✅ `bash start.sh` her çalıştırıldığında model **zaten hazırdır** — yeniden eğitim yapılmaz
+- ✅ `docker compose down` yapıp tekrar `up` yaptığında model **volume'da saklanır**
+- ✅ `docker compose down -v` ile volume'lar silinse bile model **image'dan otomatik kopyalanır**
+- ✅ Sadece `docker compose build` veya `make build` yapıldığında model yeniden eğitilir
 
-[Step 1/6] Generating dataset...
-  Phishing samples: 100%|████████████| 1000/1000
-  Legit samples   : 100%|████████████| 1000/1000
-  ✅ Dataset ready — 2000 samples (0.3s)
+İlk `docker compose up` komutu image'ları build ederken model eğitimini de yapar (toplam ~3-7 dk). Sonraki her çalıştırmada container saniyeler içinde hazır olur.
 
-[Step 3/6] Cross-validating (5-fold)...
-  CV folds: 100%|████████████| 5/5
-  ✅ CV AUC: 0.9998 ± 0.0002 (12.4s)
-
-...
-
-============================================================
-  🎉 Training complete!  Total time: 0m 18s
-============================================================
-```
-
-Her adımdan sonra tahmini kalan süre (`⏱️ Estimated remaining: ~12s`) gösterilir, böylece eğitimin ne zaman biteceğini takip edebilirsin.
+> **💡 Modeli manuel olarak yeniden eğitmek istersen:** `make train` komutu ile çalışan container içinde eğitimi tekrarlayabilirsin.
 
 **Arka planda çalışan Vmmem nedir?**
-Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker Desktop'ın kullandığı WSL2 sanal makinesidir ve yalnızca Windows'a özgüdür (Mac/Linux'ta görünmez). Eğitim tamamlandığında kaynak kullanımı düşer. Yukarıdaki ilerleme çubuklarıyla eğitimin ne zaman biteceğini takip edebilirsin.
+Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Docker Desktop'ın kullandığı WSL2 sanal makinesidir ve yalnızca Windows'a özgüdür (Mac/Linux'ta görünmez).
 
 > **💡 Vmmem bellek kullanımını sınırlamak için:** `%USERPROFILE%\.wslconfig` dosyası oluşturup şunu ekle:
 > ```ini
@@ -128,42 +122,15 @@ Windows'ta Docker çalışırken `Vmmem` adlı bir süreç görürsün. Bu, Dock
 
 ---
 
-### PC Kapanırsa Ne Olur? (Checkpoint / Resume)
+### PC Kapanırsa veya Servisler Durursa Ne Olur?
 
-Eğitim sırasında PC kapanırsa veya Docker durdurulursa **sorun yok** — eğitim kaldığı yerden devam eder:
+Model Docker image'ının içinde önceden eğitilmiş olarak saklanır. Bu nedenle:
 
-```bash
-# PC yeniden açıldıktan sonra sadece tekrar çalıştır:
-bash start.sh
-```
+- **PC kapanırsa:** Docker Desktop'ı başlat ve `bash start.sh` çalıştır — model zaten hazır, yeniden eğitim yok
+- **`docker compose down` yapılırsa:** Model Docker volume'unda saklanır, `docker compose up -d` ile anında başlar
+- **`docker compose down -v` ile volume silinirse:** Model image'dan volume'a otomatik kopyalanır, yine yeniden eğitim yok
 
-Script otomatik olarak:
-- ✅ Tamamlanan adımları atlar (dataset, cross-validation vb.)
-- ✅ Kalan adımlardan devam eder
-- ✅ Tamamlandığında checkpoint dosyalarını temizler
-
-Terminalde şöyle bir çıktı göreceksin:
-
-```
-============================================================
-  🛡️  Phishing Detector — Model Training
-============================================================
-  Steps: 6
-    ✅ Dataset generation
-    ✅ Build ensemble model
-    ✅ Cross-validation (5-fold)
-     4. Train final model
-     5. Evaluation
-     6. Save model & metrics
-
-  ▶ Resuming from step 4 (steps 1-3 already done)
-============================================================
-```
-
-> **Not:** Eğitimi sıfırdan başlatmak istersen checkpoint klasörünü sil:
-> ```bash
-> rm -rf backend/ml/checkpoints/
-> ```
+> **💡 Checkpoint/resume sistemi** hâlâ mevcuttur — `make train` ile modeli manuel eğitirken PC kapanırsa kaldığı yerden devam eder.
 
 ---
 
@@ -253,7 +220,15 @@ docker compose logs -f backend  # sadece backend
 
 ## 🇬🇧 English — One-Command Start
 
-### Only requirement: Docker
+### Try it now — no install needed
+
+A lightweight version of the app runs entirely in your browser on GitHub Pages:
+
+👉 **https://muhmteminylmz.github.io/phishing-detector/**
+
+> The GitHub Pages version uses a pre-trained ML model exported to JSON. URL scanning runs 100% client-side — no data is sent to any server. Scan history and stats are stored in localStorage.
+
+### Full version with Docker
 
 [Get Docker Desktop](https://docs.docker.com/get-docker/) — no Python, Node.js, or database setup needed. Everything is downloaded automatically.
 
@@ -281,7 +256,8 @@ bash start.sh
 ```
 
 That's it. The script:
-- Downloads all dependencies automatically (Docker images, ~2-5 min first time)
+- Downloads all dependencies automatically (Docker images)
+- **ML model is pre-trained during image build** (~3-7 min first time, instant on subsequent runs)
 - Starts the database, cache, backend, and frontend
 - Waits until the app is actually ready
 - Opens the browser automatically at **http://localhost**

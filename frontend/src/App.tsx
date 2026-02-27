@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
@@ -8,9 +8,14 @@ import Statistics from './components/Statistics'
 import URLScannerComponent from './components/URLScanner'
 import ScanResultComponent from './components/ScanResult'
 import { useScanner } from './hooks/useScanner'
+import { useLocalScanner } from './hooks/useLocalScanner'
+
+const STATIC_MODE = import.meta.env.VITE_STATIC_MODE === 'true'
 
 const ScanPage: React.FC = () => {
-  const { result, loading, scan } = useScanner()
+  const remote = useScanner()
+  const local = useLocalScanner()
+  const { result, loading, scan } = STATIC_MODE ? local : remote
 
   return (
     <div className="p-6 space-y-6">
@@ -23,8 +28,10 @@ const ScanPage: React.FC = () => {
   )
 }
 
+const Router = STATIC_MODE ? HashRouter : BrowserRouter
+
 const App: React.FC = () => (
-  <BrowserRouter>
+  <Router>
     <div className="flex flex-col min-h-screen">
       <Header />
       <div className="flex flex-1">
@@ -39,7 +46,7 @@ const App: React.FC = () => (
         </main>
       </div>
     </div>
-  </BrowserRouter>
+  </Router>
 )
 
 export default App
